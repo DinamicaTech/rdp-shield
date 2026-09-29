@@ -1,0 +1,8 @@
+/Scripts/
+/config/config.json
+/logs/
+/data/
+/backup/
+*.log
+*.wfw
+*Backup*.xml
