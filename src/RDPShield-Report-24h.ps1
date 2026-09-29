@@ -77,16 +77,13 @@ function Get-FailureAuditState([string]$subcategoryGuid) {
     try {
         $lines = @(& auditpol.exe /get "/subcategory:$subcategoryGuid" /r 2>$null)
         if ($LASTEXITCODE -ne 0) { return 'Unknown' }
-        $csv = @($lines | Where-Object { $_ -match ',' })
-        $headerIndex = -1
-        for ($i = 0; $i -lt $csv.Count; $i++) {
-            if ($csv[$i] -match 'Setting Value') { $headerIndex = $i; break }
-        }
-        if ($headerIndex -lt 0) { return 'Unknown' }
-        $policy = @($csv[$headerIndex..($csv.Count - 1)] | ConvertFrom-Csv |
-            Where-Object { $_.'Subcategory GUID' -eq $subcategoryGuid } | Select-Object -First 1)
-        if ($policy.Count -eq 0) { return 'Unknown' }
-        $value = [string]$policy[0].'Setting Value'
+        # /r includes the subcategory GUID and a numeric setting (0..3).
+        # Match those stable fields instead of localized CSV column names.
+        $guidText = $subcategoryGuid.Trim('{}')
+        $policyLine = $lines | Where-Object { $_ -match [regex]::Escape($guidText) } | Select-Object -First 1
+        if (-not $policyLine) { return 'Unknown' }
+        $value = [string](@($policyLine -split ',') | Select-Object -Last 1)
+        $value = $value.Trim(' ', '"')
         if ($value -notmatch '^[0-3]$') { return 'Unknown' }
         if (([int]$value -band 2) -ne 0) { return 'Enabled' }
         return 'Disabled'
