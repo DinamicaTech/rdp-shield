@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config\config.json'),
+    [string]$ConfigPath,
     [datetime]$EndTime = (Get-Date),
     [string]$CsvPath,
     [switch]$PassThru,
@@ -9,6 +9,16 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $PSBoundParameters.ContainsKey('ConfigPath')) {
+    $candidates = @(
+        (Join-Path $PSScriptRoot 'config\config.json'),
+        (Join-Path $PSScriptRoot '..\config\config.json')
+    )
+    $ConfigPath = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if (-not $ConfigPath) {
+        throw "Configuration not found. Checked: $($candidates -join ', '). Use -ConfigPath to specify it."
+    }
+}
 if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { throw "Configuration not found: $ConfigPath" }
 $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
 $port = 0

@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $configPath = Join-Path $env:TEMP ("rdpshield-report-$([guid]::NewGuid().ToString('N')).json")
+$layoutRoot = Join-Path $env:TEMP ("rdpshield-layout-$([guid]::NewGuid().ToString('N'))")
 try {
     '{"RdpPort":3389}' | Set-Content -LiteralPath $configPath -Encoding UTF8
     $end = [datetime]'2026-09-29T12:30:00'
@@ -23,7 +24,27 @@ try {
     if ($report.Hours[23].FirewallBlocked -ne 1 -or $report.Hours[23].FailedRdpLogons -ne 1) { throw 'Incorrect latest hour.' }
     if ($report.Hours[22].FirewallBlocked -ne 1) { throw 'Incorrect previous hour.' }
     if ($report.FirewallAudit -ne 'Enabled' -or $report.LogonAudit -ne 'Enabled') { throw 'Incorrect audit state.' }
+    $scriptSource = Join-Path $root 'src\RDPShield-Report-24h.ps1'
+    $flatScript = Join-Path $layoutRoot 'RDPShield-Report-24h.ps1'
+    $flatConfig = Join-Path $layoutRoot 'config\config.json'
+    New-Item -ItemType Directory -Path (Split-Path -Parent $flatConfig) -Force | Out-Null
+    Copy-Item -LiteralPath $scriptSource -Destination $flatScript
+    Copy-Item -LiteralPath $configPath -Destination $flatConfig
+    $flatReport = & $flatScript -EndTime $end -InputEvents $events -AuditMode Enabled -PassThru
+    if ($flatReport.RdpPort -ne 3389 -or $flatReport.FirewallBlockedTotal -ne 2) { throw 'Flat C:\Scripts layout failed.' }
+    $nestedScript = Join-Path $layoutRoot 'src\RDPShield-Report-24h.ps1'
+    New-Item -ItemType Directory -Path (Split-Path -Parent $nestedScript) -Force | Out-Null
+    Copy-Item -LiteralPath $scriptSource -Destination $nestedScript
+    $nestedReport = & $nestedScript -EndTime $end -InputEvents $events -AuditMode Enabled -PassThru
+    if ($nestedReport.RdpPort -ne 3389 -or $nestedReport.FirewallBlockedTotal -ne 2) { throw 'Repository src/config layout failed.' }
     Write-Host 'Report24h passed.'
 } finally {
     Remove-Item -LiteralPath $configPath -ErrorAction SilentlyContinue
+    $resolvedLayout = [System.IO.Path]::GetFullPath($layoutRoot)
+    $tempPrefix = [System.IO.Path]::GetFullPath($env:TEMP).TrimEnd('\') + '\'
+    if ($resolvedLayout.StartsWith($tempPrefix, [System.StringComparison]::OrdinalIgnoreCase) -and
+        (Split-Path -Leaf $resolvedLayout) -like 'rdpshield-layout-*' -and
+        (Test-Path -LiteralPath $resolvedLayout)) {
+        Remove-Item -LiteralPath $resolvedLayout -Recurse -Force
+    }
 }

@@ -54,6 +54,8 @@ Run the report **on the Windows Server** in an elevated PowerShell session. It r
 .\src\RDPShield-Report-24h.ps1 -CsvPath .\rdp-shield-24h.csv
 ```
 
+The script finds `config\config.json` beside itself (for example, `C:\Scripts\config\config.json`) or beside its parent directory (the repository `src\` layout). Use `-ConfigPath` for any other location.
+
 The 24 rows are rolling, one-hour windows ending at the time of the command. `FirewallBlocked` counts inbound TCP/UDP event 5157 for `RdpPort`; `FailedRdpLogons` counts event 4625 with logon type 10. To get structured data, use `-PassThru`. The report displays audit and log-retention coverage. **Do not interpret a zero as no attacks** when audit status is unknown/disabled or the Security log does not cover the whole period.
 
 Event 5157 requires *Audit Filtering Platform Connection → Failure*. The report checks this policy but does not enable it. If needed, an administrator can enable it with `auditpol /set /subcategory:"{0CCE9226-69AE-11D9-BED3-505054503030}" /failure:enable` after assessing Security log volume and retention. Failed logons also require failure auditing for *Logon*. Connections blocked by the firewall never reach authentication; therefore these are separate measures, not additive counts of unique attackers. Event 5157 can include blocks made by IPBan or other firewall rules; this report does not attribute them exclusively to RDP Shield. Some RDP/NLA failures may appear under other logon types and are not included in the type 10 count. For a before/after comparison, save hourly CSV reports before and after deployment with the same audit policy and log retention.
