@@ -16,7 +16,7 @@
 | Firewall audit | Find other active inbound Allow rules that may still admit traffic to the RDP port. |
 | Firewall rules | Stage or update rules owned by RDP Shield, with a Windows Firewall export before changes. |
 | Status | Report country data, resolved emergency addresses, managed rules, and possible competing Allow rules. |
-| IPBan | Runs separately today. Automated integration is on the roadmap. |
+| IPBan | Runs separately today. [Optional integration plan](docs/IPBAN-INTEGRATION.md) is on the roadmap. |
 
 An Allow rule scoped to a country does **not** restrict traffic allowed by another active rule. The audit must be clear before claiming that RDP access is geographically restricted.
 
