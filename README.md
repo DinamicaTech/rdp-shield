@@ -7,7 +7,19 @@
 **Want IPBan protection? Install IPBan separately first.** RDP Shield does not download or install it. Use the official [IPBan Windows installation instructions](https://github.com/DigitalRuby/IPBan#install) or the [official releases](https://github.com/DigitalRuby/IPBan/releases), then explicitly enable the optional integration.
 
 > [!WARNING]
-> **Development status:** The scripts are not yet a production-ready installer. The firewall workflow has not been tested on Windows Server. Keep an open session and an independent recovery path when testing RDP rules.
+> **Development status:** One Windows Server deployment has been observed, but installation, rollback, and recovery have not yet been independently validated across supported Server versions. Keep an open session and an independent recovery path when testing RDP rules.
+
+## Observed impact on one Windows Server
+
+The same server was monitored across three successive configurations. The figures below count **Security event 4625 failures with a source IP**, grouped into complete one-hour windows. The operator separately confirmed that the unwanted source IPs were outside Spain.
+
+| Protection in place | Complete windows (2026, server local time) | Failed logons with IP | Average per hour | Change from previous stage |
+|:--|:--|--:|--:|--:|
+| ⚪ No IPBan or country filter | Sep 26, 15:33 → Sep 27, 12:33 (21 h) | **25,257** | **1,203** | Baseline |
+| 🟡 IPBan | Sep 27, 13:33 → Sep 28, 13:33 (24 h) | **350** | **14.6** | **↓ 98.8%** |
+| 🟢 IPBan + RDP Shield Spain allowlist | Sep 28, 14:33 → Sep 29, 11:33 (21 h) | **0** | **0** | **↓ 100%** |
+
+IPBan was activated on **2026-09-27 at 12:52:31**; the Spain RDP rules were applied on **2026-09-28 at 13:57:23**. The two hour-long windows containing those changes were excluded from the stage comparison (45 and 2 events, respectively). The source was a 72-hour report run on 2026-09-29. These are observed authentication failures, not counts of unique attackers or firewall blocks. All counted events were logon type 3 (network), which does not identify RDP by itself. Filtering Platform Connection failure auditing was disabled, so the number of firewall blocks was unavailable. The report's log-retention warning applied to earlier hours, before the first window shown here.
 
 ## How it works
 
