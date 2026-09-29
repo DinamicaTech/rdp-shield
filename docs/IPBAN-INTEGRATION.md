@@ -2,6 +2,8 @@
 
 IPBan remains an optional, separately installed product. RDP Shield will not install IPBan, change its ban thresholds, or manage its ban rules.
 
+Users who want IPBan must install it themselves using the official [Windows installation instructions](https://github.com/DigitalRuby/IPBan#install) or [release downloads](https://github.com/DigitalRuby/IPBan/releases). RDP Shield will detect an existing installation; it will not run IPBan's installer.
+
 ## Data flow
 
 1. RDP Shield owns the country and emergency RDP Allow rules.

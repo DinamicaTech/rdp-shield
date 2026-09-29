@@ -4,6 +4,8 @@
 
 **Country-based RDP access, dynamic emergency access, and firewall visibility for Windows.** RDP Shield is a PowerShell toolkit being developed for Windows Server. [IPBan](https://github.com/DigitalRuby/IPBan) can provide an independent brute-force protection layer; automatic IPBan integration is planned.
 
+**Want IPBan protection? Install IPBan separately first.** RDP Shield does not download or install it. Use the official [IPBan Windows installation instructions](https://github.com/DigitalRuby/IPBan#install) or the [official releases](https://github.com/DigitalRuby/IPBan/releases), then enable the optional integration when it becomes available.
+
 > [!WARNING]
 > **Development status:** The scripts are not yet a production-ready installer. The firewall workflow has not been tested on Windows Server. Keep an open session and an independent recovery path when testing RDP rules.
 
