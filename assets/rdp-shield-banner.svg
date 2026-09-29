@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" role="img" aria-labelledby="title description">
+  <title id="title">RDP Shield</title>
+  <desc id="description">A shield over a globe with the words RDP Shield and the three layers: country ranges, emergency access, and firewall audit.</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1"><stop stop-color="#101c33"/><stop offset="1" stop-color="#142f48"/></linearGradient>
+    <linearGradient id="shield" x2="1" y2="1"><stop stop-color="#56dfc4"/><stop offset="1" stop-color="#4ba9f6"/></linearGradient>
+  </defs>
+  <rect width="1200" height="340" rx="24" fill="url(#background)"/>
+  <g opacity=".1" stroke="#b7d7ee" fill="none">
+    <path d="M0 64h1200M0 128h1200M0 192h1200M0 256h1200M80 0v340M160 0v340M240 0v340M320 0v340M400 0v340M480 0v340M560 0v340M640 0v340M720 0v340M800 0v340M880 0v340M960 0v340M1040 0v340M1120 0v340"/>
+  </g>
+  <circle cx="172" cy="170" r="112" fill="#163851" stroke="#366780" stroke-width="2"/>
+  <g fill="none" stroke="#477d94" stroke-width="2" opacity=".8"><circle cx="172" cy="170" r="83"/><ellipse cx="172" cy="170" rx="43" ry="83"/><path d="M89 170h166M102 128h140M102 212h140"/></g>
+  <path d="M172 84c30 21 56 28 78 31v54c0 46-27 77-78 99-51-22-78-53-78-99v-54c22-3 48-10 78-31Z" fill="#102c40" stroke="url(#shield)" stroke-width="7"/>
+  <path d="m137 173 24 24 48-54" fill="none" stroke="#76ead2" stroke-linecap="round" stroke-linejoin="round" stroke-width="12"/>
+  <text x="335" y="137" fill="#f4fbff" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="64">RDP Shield</text>
+  <text x="339" y="180" fill="#a9c5d9" font-family="Segoe UI,Arial,sans-serif" font-size="24">Layered access control for Windows Remote Desktop</text>
+  <g font-family="Segoe UI,Arial,sans-serif" font-size="18" font-weight="600" text-anchor="middle">
+    <rect x="338" y="220" width="190" height="48" rx="24" fill="#1c5767"/><text x="433" y="250" fill="#d5fff4">Country ranges</text>
+    <rect x="543" y="220" width="203" height="48" rx="24" fill="#215478"/><text x="644" y="250" fill="#e1f4ff">Emergency access</text>
+    <rect x="761" y="220" width="177" height="48" rx="24" fill="#334667"/><text x="849" y="250" fill="#e5edff">Firewall audit</text>
+  </g>
+</svg>

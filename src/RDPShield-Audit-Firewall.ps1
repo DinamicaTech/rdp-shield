@@ -27,7 +27,7 @@ function Test-PortMatch {
 }
 
 $findings = @(
-    Get-NetFirewallRule -PolicyStore ActiveStore -Direction Inbound -Action Allow -Enabled True |
+    Get-NetFirewallRule -PolicyStore ActiveStore -Direction Inbound -Action Allow -Enabled True -ErrorAction Stop |
         Where-Object { $_.Name -notlike 'RDPShield-*' } |
         ForEach-Object {
             $rule = $_

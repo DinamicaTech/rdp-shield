@@ -66,7 +66,7 @@ $specs = @(
 # Verificar todas las reglas existentes antes de modificar cualquiera.
 foreach ($spec in $specs) {
     $rule = Get-NetFirewallRule -Name $spec.Name -ErrorAction SilentlyContinue
-    if ($null -eq $rule) { continue }
+    if ($null -eq $rule) { $spec.NeedsUpdate = $true; continue }
     if (@($rule).Count -ne 1 -or $rule.Group -ne 'RDPShield' -or
         $rule.Direction -ne 'Inbound' -or $rule.Action -ne 'Allow') {
         throw "La regla $($spec.Name) existe pero no pertenece a RDP Shield o tiene propiedades inesperadas."
@@ -75,10 +75,16 @@ foreach ($spec in $specs) {
     if ([string]$filter.Protocol -ne $spec.Protocol -or [string]$filter.LocalPort -ne [string]$port) {
         throw "La regla $($spec.Name) no usa $($spec.Protocol)/$port."
     }
+    $currentAddresses = @($rule | Get-NetFirewallAddressFilter | Select-Object -ExpandProperty RemoteAddress | Sort-Object -Unique)
+    $wantedAddresses = @($spec.Addresses | Sort-Object -Unique)
+    $spec.NeedsUpdate = ([string]$rule.Enabled -ne 'True' -or
+        ($currentAddresses -join ',') -ne ($wantedAddresses -join ','))
 }
 
+$pending = @($specs | Where-Object { $_.NeedsUpdate })
+if ($pending.Count -eq 0) { Write-Host 'RDP Shield rules are already current.'; return }
 if ($WhatIfPreference) {
-    foreach ($spec in $specs) { $PSCmdlet.ShouldProcess($spec.Name, 'Crear o actualizar regla') | Out-Null }
+    foreach ($spec in $pending) { $PSCmdlet.ShouldProcess($spec.Name, 'Crear o actualizar regla') | Out-Null }
     return
 }
 
@@ -89,7 +95,7 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $backupPath -PathType L
     throw 'No se pudo exportar una copia del firewall; no se han aplicado cambios.'
 }
 
-foreach ($spec in $specs) {
+foreach ($spec in $pending) {
     if (-not $PSCmdlet.ShouldProcess($spec.Name, 'Crear o actualizar regla')) { continue }
     $rule = Get-NetFirewallRule -Name $spec.Name -ErrorAction SilentlyContinue
     if ($null -eq $rule) {
