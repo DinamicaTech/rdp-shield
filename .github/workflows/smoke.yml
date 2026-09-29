@@ -17,3 +17,4 @@ jobs:
         run: |
           .\tests\Smoke.ps1
           .\tests\MigrationPlan.ps1
+          .\tests\Report24h.ps1
