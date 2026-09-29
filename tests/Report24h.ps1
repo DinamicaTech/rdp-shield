@@ -14,13 +14,15 @@ try {
         (New-TestEvent 5157 $end.AddMinutes(-10) '<Data Name="Direction">%%14592</Data><Data Name="DestPort">3389</Data><Data Name="Protocol">6</Data>'),
         (New-TestEvent 5157 $end.AddMinutes(-20) '<Data Name="Direction">%%14593</Data><Data Name="DestPort">3389</Data><Data Name="Protocol">6</Data>'),
         (New-TestEvent 5157 $end.AddHours(-2) '<Data Name="Direction">%%14592</Data><Data Name="DestPort">3389</Data><Data Name="Protocol">17</Data>'),
-        (New-TestEvent 4625 $end.AddMinutes(-5) '<Data Name="LogonType">10</Data>'),
-        (New-TestEvent 4625 $end.AddMinutes(-4) '<Data Name="LogonType">3</Data>')
+        (New-TestEvent 4625 $end.AddMinutes(-5) '<Data Name="LogonType">10</Data><Data Name="IpAddress">203.0.113.10</Data>'),
+        (New-TestEvent 4625 $end.AddMinutes(-4) '<Data Name="LogonType">3</Data><Data Name="IpAddress">203.0.113.11</Data>'),
+        (New-TestEvent 4625 $end.AddMinutes(-3) '<Data Name="LogonType">3</Data><Data Name="IpAddress">-</Data>')
     )
     $report = & (Join-Path $root 'src\RDPShield-Report-24h.ps1') -ConfigPath $configPath -EndTime $end -InputEvents $events -AuditMode Enabled -PassThru
     if ($report.Hours.Count -ne 24) { throw 'Expected 24 hourly rows.' }
     if ($report.FirewallBlockedTotal -ne 2) { throw 'Incorrect firewall blocked total.' }
     if ($report.FailedRdpLogonsTotal -ne 1) { throw 'Incorrect failed RDP logon total.' }
+    if ($report.FailedLogonsWithIPTotal -ne 2 -or $report.FailedNetworkLogonsTotal -ne 1) { throw 'Incorrect source-IP totals.' }
     if ($report.Hours[23].FirewallBlocked -ne 1 -or $report.Hours[23].FailedRdpLogons -ne 1) { throw 'Incorrect latest hour.' }
     if ($report.Hours[22].FirewallBlocked -ne 1) { throw 'Incorrect previous hour.' }
     if ($report.FirewallAudit -ne 'Enabled' -or $report.LogonAudit -ne 'Enabled') { throw 'Incorrect audit state.' }
@@ -37,6 +39,8 @@ try {
     Copy-Item -LiteralPath $scriptSource -Destination $nestedScript
     $nestedReport = & $nestedScript -EndTime $end -InputEvents $events -AuditMode Enabled -PassThru
     if ($nestedReport.RdpPort -ne 3389 -or $nestedReport.FirewallBlockedTotal -ne 2) { throw 'Repository src/config layout failed.' }
+    $report48 = & $nestedScript -EndTime $end -Hours 48 -InputEvents $events -AuditMode Enabled -PassThru
+    if ($report48.Hours.Count -ne 48 -or $report48.FailedLogonsWithIPTotal -ne 2) { throw '48-hour report failed.' }
     Write-Host 'Report24h passed.'
 } finally {
     Remove-Item -LiteralPath $configPath -ErrorAction SilentlyContinue
