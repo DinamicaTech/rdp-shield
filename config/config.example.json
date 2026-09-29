@@ -4,5 +4,6 @@
   "RdpPort": 3389,
   "UpdateIntervalMinutes": 15,
   "CountryUpdateHour": 2,
-  "EnableIPBanIntegration": false
+  "EnableIPBanIntegration": false,
+  "IPBanConfigPath": ""
 }

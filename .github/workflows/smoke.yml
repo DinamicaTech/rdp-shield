@@ -11,4 +11,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run Windows PowerShell 5.1 smoke tests
         shell: powershell
-        run: .\tests\Smoke.ps1
+        run: |
+          .\tests\Smoke.ps1
+          .\tests\MigrationPlan.ps1

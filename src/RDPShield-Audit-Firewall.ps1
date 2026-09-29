@@ -12,6 +12,7 @@ $port = 0
 if (-not [int]::TryParse([string]$config.RdpPort, [ref]$port) -or $port -lt 1 -or $port -gt 65535) {
     throw 'RdpPort debe ser un puerto entre 1 y 65535.'
 }
+$trusted = @(& (Join-Path $PSScriptRoot 'RDPShield-Resolve-Emergency.ps1') -ConfigPath $ConfigPath -ResolveOnly)
 
 function Test-PortMatch {
     param([object[]]$Values, [int]$Target)
@@ -36,12 +37,14 @@ $findings = @(
             if ($protocol -notin @('TCP', 'UDP', 'Any', '6', '17', '256')) { return }
             if (-not (Test-PortMatch -Values @($portFilter.LocalPort) -Target $port)) { return }
             $addressFilter = $rule | Get-NetFirewallAddressFilter
+            $remote = @($addressFilter.RemoteAddress)
+            if ($remote.Count -gt 0 -and @($remote | Where-Object { $trusted -notcontains $_ }).Count -eq 0) { return }
             [pscustomobject]@{
                 Name = $rule.Name
                 DisplayName = $rule.DisplayName
                 Protocol = $protocol
                 LocalPort = (@($portFilter.LocalPort) -join ',')
-                RemoteAddress = (@($addressFilter.RemoteAddress) -join ',')
+                RemoteAddress = ($remote -join ',')
                 PolicyStoreSource = $rule.PolicyStoreSource
             }
         }

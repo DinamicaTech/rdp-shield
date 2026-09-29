@@ -34,6 +34,23 @@ try {
     if ($plan.Country -ne 'ES' -or $plan.RegisterTasks) { throw 'Installer plan is incorrect.' }
     if (Test-Path -LiteralPath (Join-Path $temp 'install')) { throw 'PlanOnly created an install directory.' }
 
+    $ipbanPath = Join-Path $temp 'ipban.override.config'
+    $managedPath = Join-Path $temp 'ipban-managed.json'
+    [System.IO.File]::WriteAllText($ipbanPath, '<configuration><appSettings><add key="Whitelist" value="198.51.100.1" /></appSettings></configuration>')
+    [System.IO.File]::WriteAllText($configPath, '{"EmergencyAccess":["203.0.113.10"],"EnableIPBanIntegration":true}')
+    $ipbanPlan = & (Join-Path $root 'src\RDPShield-Sync-IPBan.ps1') -ConfigPath $configPath -IPBanConfigPath $ipbanPath -StatePath $managedPath -PlanOnly
+    if (-not $ipbanPlan.WhitelistChanges -or (Test-Path -LiteralPath $managedPath)) { throw 'IPBan plan unexpectedly wrote state.' }
+    & (Join-Path $root 'src\RDPShield-Sync-IPBan.ps1') -ConfigPath $configPath -IPBanConfigPath $ipbanPath -StatePath $managedPath | Out-Null
+    $first = (Select-Xml -LiteralPath $ipbanPath -XPath '/configuration/appSettings/add[@key="Whitelist"]').Node.value
+    if ($first -ne '198.51.100.1,203.0.113.10') { throw 'IPBan sync did not preserve the existing whitelist.' }
+    [System.IO.File]::WriteAllText($configPath, '{"EmergencyAccess":["203.0.113.11"],"EnableIPBanIntegration":true}')
+    & (Join-Path $root 'src\RDPShield-Sync-IPBan.ps1') -ConfigPath $configPath -IPBanConfigPath $ipbanPath -StatePath $managedPath | Out-Null
+    $second = (Select-Xml -LiteralPath $ipbanPath -XPath '/configuration/appSettings/add[@key="Whitelist"]').Node.value
+    if ($second -ne '198.51.100.1,203.0.113.11') { throw 'IPBan sync failed to replace only its managed address.' }
+    & (Join-Path $root 'src\RDPShield-Sync-IPBan.ps1') -ConfigPath $configPath -IPBanConfigPath $ipbanPath -StatePath $managedPath -RemoveManaged | Out-Null
+    $removed = (Select-Xml -LiteralPath $ipbanPath -XPath '/configuration/appSettings/add[@key="Whitelist"]').Node.value
+    if ($removed -ne '198.51.100.1') { throw 'IPBan cleanup removed an administrator entry or left a managed entry.' }
+
     Write-Host 'RDP Shield smoke tests passed.'
 } finally {
     $safeRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())

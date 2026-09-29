@@ -48,6 +48,27 @@ try {
     $firewallError = $_.Exception.Message
 }
 
+$ipBanStatus = 'Disabled'
+$ipBanManaged = 0
+if ($config.EnableIPBanIntegration -eq $true) {
+    $service = Get-Service -Name 'IPBan' -ErrorAction SilentlyContinue
+    $ipBanStatus = if ($null -eq $service) { 'Not installed' } else { [string]$service.Status }
+    $managedPath = Join-Path $PSScriptRoot '..\data\ipban-managed.json'
+    if (Test-Path -LiteralPath $managedPath -PathType Leaf) {
+        $managed = Get-Content -LiteralPath $managedPath -Raw | ConvertFrom-Json
+        $ipBanManaged = @($managed.ManagedAddresses).Count
+    }
+}
+
+$migrationStatus = 'Not started'
+$rollbackAt = $null
+$migrationPath = Join-Path $PSScriptRoot '..\data\migration-active.json'
+if (Test-Path -LiteralPath $migrationPath -PathType Leaf) {
+    $migration = Get-Content -LiteralPath $migrationPath -Raw | ConvertFrom-Json
+    $migrationStatus = [string]$migration.Status
+    $rollbackAt = $migration.RollbackAt
+}
+
 $state = if ($firewallError) { 'Unknown' }
     elseif ($dnsError -or $countryCount -lt 10 -or @($rules | Where-Object { -not $_.Exists -or -not $_.Enabled }).Count -gt 0) { 'Incomplete' }
     elseif ($conflicts.Count -gt 0) { 'Staged: other Allow rules remain' }
@@ -64,4 +85,8 @@ $state = if ($firewallError) { 'Unknown' }
     Rules = $rules
     OtherAllowRules = $conflicts.Count
     FirewallReadError = $firewallError
+    IPBanStatus = $ipBanStatus
+    IPBanManagedAddresses = $ipBanManaged
+    MigrationStatus = $migrationStatus
+    MigrationRollbackAt = $rollbackAt
 }

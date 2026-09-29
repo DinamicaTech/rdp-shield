@@ -25,6 +25,9 @@ if (-not [int]::TryParse([string]$config.UpdateIntervalMinutes, [ref]$interval) 
 if (-not [int]::TryParse([string]$config.CountryUpdateHour, [ref]$hour) -or $hour -lt 0 -or $hour -gt 23) { throw 'CountryUpdateHour debe estar entre 0 y 23.' }
 $emergency = @(& (Join-Path $PSScriptRoot 'src\RDPShield-Resolve-Emergency.ps1') -ConfigPath $ConfigPath -ResolveOnly)
 if ($emergency.Count -eq 0) { throw 'EmergencyAccess no es valido.' }
+if ($config.EnableIPBanIntegration -eq $true -and $StageFirewall -and -not $PlanOnly) {
+    & (Join-Path $PSScriptRoot 'src\RDPShield-Sync-IPBan.ps1') -ConfigPath $ConfigPath -PlanOnly | Out-Null
+}
 
 $fullInstallPath = [System.IO.Path]::GetFullPath($InstallPath)
 if (Test-Path -LiteralPath $fullInstallPath) {
@@ -38,6 +41,7 @@ $plan = [pscustomobject]@{
     EmergencyIPv4 = $emergency
     StageFirewall = [bool]$StageFirewall
     RegisterTasks = [bool]$RegisterTasks
+    IPBanIntegration = [bool]$config.EnableIPBanIntegration
     CountryUpdateHour = $hour
     EmergencyUpdateMinutes = $interval
 }
@@ -63,13 +67,16 @@ $installedConfig = Join-Path $fullInstallPath 'config\config.json'
 
 if ($StageFirewall) {
     & (Join-Path $fullInstallPath 'src\RDPShield-Apply-Firewall.ps1') -ConfigPath $installedConfig -StageOnly
+    if ($config.EnableIPBanIntegration -eq $true) {
+        & (Join-Path $fullInstallPath 'src\RDPShield-Sync-IPBan.ps1') -ConfigPath $installedConfig
+    }
 }
 
 if ($RegisterTasks) {
     $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
     $principalTask = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
     $countryScript = Join-Path $fullInstallPath 'src\RDPShield-Refresh-Country.ps1'
-    $emergencyScript = Join-Path $fullInstallPath 'src\RDPShield-Resolve-Emergency.ps1'
+    $emergencyScript = Join-Path $fullInstallPath 'src\RDPShield-Refresh-Emergency.ps1'
     $countryAction = New-ScheduledTaskAction -Execute $powershell -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$countryScript`""
     $emergencyAction = New-ScheduledTaskAction -Execute $powershell -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$emergencyScript`""
     $countryTrigger = New-ScheduledTaskTrigger -Daily -At ([datetime]::Today.AddHours($hour))
