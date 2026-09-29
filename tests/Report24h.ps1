@@ -41,6 +41,12 @@ try {
     if ($nestedReport.RdpPort -ne 3389 -or $nestedReport.FirewallBlockedTotal -ne 2) { throw 'Repository src/config layout failed.' }
     $report48 = & $nestedScript -EndTime $end -Hours 48 -InputEvents $events -AuditMode Enabled -PassThru
     if ($report48.Hours.Count -ne 48 -or $report48.FailedLogonsWithIPTotal -ne 2) { throw '48-hour report failed.' }
+    $fastProperties = @(0..19 | ForEach-Object { [pscustomobject]@{ Value = '' } })
+    $fastProperties[10].Value = '3'
+    $fastProperties[19].Value = '203.0.113.12'
+    $fastEvent = [pscustomobject]@{ Id = 4625; TimeCreated = $end.AddMinutes(-1); Properties = $fastProperties }
+    $fastReport = & $nestedScript -EndTime $end -InputEvents @($fastEvent) -AuditMode Enabled -PassThru
+    if ($fastReport.FailedLogonsWithIPTotal -ne 1 -or $fastReport.FailedNetworkLogonsTotal -ne 1) { throw 'Fast event properties path failed.' }
     Write-Host 'Report24h passed.'
 } finally {
     Remove-Item -LiteralPath $configPath -ErrorAction SilentlyContinue

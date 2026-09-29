@@ -36,40 +36,57 @@ for ($i = 0; $i -lt $Hours; $i++) {
 
 $readError = $null
 $oldest = $null
-$source = $null
-if ($PSBoundParameters.ContainsKey('InputEvents')) {
-    $source = $InputEvents
-} else {
+function Add-EventToReport([object]$record) {
+    if ($record.TimeCreated -lt $start -or $record.TimeCreated -ge $EndTime) { return }
+    $index = [int][math]::Floor(($record.TimeCreated - $start).TotalHours)
+    if ($index -lt 0 -or $index -ge $Hours) { return }
     try {
-        $oldest = Get-WinEvent -LogName Security -Oldest -MaxEvents 1 -ErrorAction Stop
-        $source = Get-WinEvent -FilterHashtable @{ LogName = 'Security'; Id = @(5157, 4625); StartTime = $start; EndTime = $EndTime } -ErrorAction Stop
+        $values = $record.Properties
+        if ($record.Id -eq 4625 -and $null -ne $values -and $values.Count -ge 20) {
+            # 4625 version 0: LogonType=10, IpAddress=19.
+            $logonType = [string]$values[10].Value
+            $sourceIp = [string]$values[19].Value
+            if ($sourceIp -and $sourceIp -ne '-') {
+                $rows[$index].FailedLogonsWithIP++
+                if ($logonType -eq '3') { $rows[$index].FailedNetworkLogons++ }
+            }
+            if ($logonType -eq '10') { $rows[$index].FailedRdpLogons++ }
+        } elseif ($record.Id -eq 5157 -and $null -ne $values -and $values.Count -ge 8) {
+            # 5157: Direction=2, DestPort=6, Protocol=7.
+            if ([string]$values[2].Value -eq '%%14592' -and [string]$values[6].Value -eq [string]$port -and
+                [string]$values[7].Value -in @('6', '17')) { $rows[$index].FirewallBlocked++ }
+        } else {
+            # Offline fixtures and unexpected event layouts use named XML fields.
+            [xml]$xml = $record.ToXml()
+            $fields = @{}
+            foreach ($field in $xml.Event.EventData.Data) { $fields[[string]$field.Name] = [string]$field.'#text' }
+            if ($record.Id -eq 5157 -and $fields.Direction -eq '%%14592' -and
+                $fields.DestPort -eq [string]$port -and $fields.Protocol -in @('6', '17')) {
+                $rows[$index].FirewallBlocked++
+            } elseif ($record.Id -eq 4625) {
+                if ($fields.IpAddress -and $fields.IpAddress -ne '-') {
+                    $rows[$index].FailedLogonsWithIP++
+                    if ($fields.LogonType -eq '3') { $rows[$index].FailedNetworkLogons++ }
+                }
+                if ($fields.LogonType -eq '10') { $rows[$index].FailedRdpLogons++ }
+            }
+        }
     } catch {
-        # Get-WinEvent also throws when the query has no matching events.
-        if ($_.FullyQualifiedErrorId -notlike 'NoMatchingEventsFound*') { $readError = $_.Exception.Message }
-        $source = @()
+        $script:readError = "Could not parse one or more Security events: $($_.Exception.Message)"
     }
 }
 
-foreach ($event in $source) {
-    if ($event.TimeCreated -lt $start -or $event.TimeCreated -gt $EndTime) { continue }
-    $index = [int][math]::Floor(($event.TimeCreated - $start).TotalHours)
-    if ($index -lt 0 -or $index -ge $Hours) { continue }
+if ($PSBoundParameters.ContainsKey('InputEvents')) {
+    foreach ($record in $InputEvents) { Add-EventToReport $record }
+} else {
     try {
-        [xml]$xml = $event.ToXml()
-        $fields = @{}
-        foreach ($field in $xml.Event.EventData.Data) { $fields[[string]$field.Name] = [string]$field.'#text' }
-        if ($event.Id -eq 5157 -and $fields.Direction -eq '%%14592' -and
-            $fields.DestPort -eq [string]$port -and $fields.Protocol -in @('6', '17')) {
-            $rows[$index].FirewallBlocked++
-        } elseif ($event.Id -eq 4625) {
-            if ($fields.IpAddress -and $fields.IpAddress -ne '-') {
-                $rows[$index].FailedLogonsWithIP++
-                if ($fields.LogonType -eq '3') { $rows[$index].FailedNetworkLogons++ }
-            }
-            if ($fields.LogonType -eq '10') { $rows[$index].FailedRdpLogons++ }
-        }
+        $oldest = Get-WinEvent -LogName Security -Oldest -MaxEvents 1 -ErrorAction Stop
+        # Process records as they arrive; do not materialize the entire window.
+        Get-WinEvent -FilterHashtable @{ LogName = 'Security'; Id = @(5157, 4625); StartTime = $start; EndTime = $EndTime } -ErrorAction Stop |
+            ForEach-Object { Add-EventToReport $_ }
     } catch {
-        $readError = "Could not parse one or more Security events: $($_.Exception.Message)"
+        # Get-WinEvent also throws when the query has no matching events.
+        if ($_.FullyQualifiedErrorId -notlike 'NoMatchingEventsFound*') { $readError = $_.Exception.Message }
     }
 }
 
